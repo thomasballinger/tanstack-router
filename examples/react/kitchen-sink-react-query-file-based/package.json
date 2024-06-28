@@ -14,10 +14,12 @@
     "@tanstack/react-router": "^1.43.6",
     "@tanstack/router-devtools": "^1.43.6",
     "@tanstack/router-vite-plugin": "^1.43.5",
-    "redaxios": "^0.5.0",
+    "convex": "^1.13.0",
+    "convex-tanstack-query": "github:thomasballinger/convex-react-query-draft",
     "immer": "^10.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "redaxios": "^0.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

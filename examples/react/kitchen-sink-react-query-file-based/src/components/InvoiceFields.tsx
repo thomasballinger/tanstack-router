@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Invoice } from '../utils/mockTodos'
+import { Invoice } from '../../convex/schema'
 
 export function InvoiceFields({
   invoice,

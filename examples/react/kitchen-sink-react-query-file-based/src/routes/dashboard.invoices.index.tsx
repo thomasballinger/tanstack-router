@@ -2,8 +2,10 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
-import { Invoice } from '../utils/mockTodos'
-import { useCreateInvoiceMutation } from '../utils/queryOptions'
+import { useMutation } from '@tanstack/react-query'
+import { api } from '../../convex/_generated/api'
+import { useConvex } from 'convex/react'
+import { Invoice } from '../../convex/schema'
 
 // @ts-ignore
 export const Route = createFileRoute('/dashboard/invoices/')({
@@ -11,7 +13,11 @@ export const Route = createFileRoute('/dashboard/invoices/')({
 })
 
 function InvoicesIndexComponent() {
-  const createInvoiceMutation = useCreateInvoiceMutation()
+  const convex = useConvex()
+  const createInvoiceMutation = useMutation({
+    mutationFn: (args: (typeof api.data.postInvoice)['_args']) =>
+      convex.mutation(api.data.postInvoice, args),
+  })
 
   return (
     <>

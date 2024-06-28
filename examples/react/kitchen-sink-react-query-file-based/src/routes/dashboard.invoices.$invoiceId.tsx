@@ -1,12 +1,11 @@
 import * as React from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { InvoiceFields } from '../components/InvoiceFields'
-import {
-  invoiceQueryOptions,
-  useUpdateInvoiceMutation,
-} from '../utils/queryOptions'
+import { api } from '../../convex/_generated/api'
+import { convexQueryOptions } from '../main'
+import { useConvex } from 'convex/react'
 
 export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
   params: {
@@ -24,7 +23,7 @@ export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
       .parse(search),
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(
-      invoiceQueryOptions(opts.params.invoiceId),
+      convexQueryOptions(api.data.getInvoice, { id: opts.params.invoiceId }),
     ),
   component: InvoiceComponent,
 })
@@ -33,9 +32,16 @@ function InvoiceComponent() {
   const search = Route.useSearch()
   const params = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
-  const invoiceQuery = useSuspenseQuery(invoiceQueryOptions(params.invoiceId))
+  const invoiceQuery = useSuspenseQuery(
+    convexQueryOptions(api.data.getInvoice, { id: params.invoiceId }),
+  )
   const invoice = invoiceQuery.data
-  const updateInvoiceMutation = useUpdateInvoiceMutation(params.invoiceId)
+
+  const convex = useConvex()
+  const updateInvoiceMutation = useMutation({
+    mutationFn: (args: (typeof api.data.patchInvoice)['_args']) =>
+      convex.mutation(api.data.patchInvoice, args),
+  })
   const [notes, setNotes] = React.useState(search.notes ?? '')
 
   React.useEffect(() => {

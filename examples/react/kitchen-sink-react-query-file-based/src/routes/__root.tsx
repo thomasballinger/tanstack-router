@@ -10,6 +10,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Auth } from '../utils/auth'
 import { Spinner } from '../components/Spinner'
+import { ConvexQueryClient } from 'convex-tanstack-query'
 
 function RouterSpinner() {
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
@@ -19,6 +20,7 @@ function RouterSpinner() {
 export const Route = createRootRouteWithContext<{
   auth: Auth
   queryClient: QueryClient
+  convexQueryClient: ConvexQueryClient
 }>()({
   component: RootComponent,
 })

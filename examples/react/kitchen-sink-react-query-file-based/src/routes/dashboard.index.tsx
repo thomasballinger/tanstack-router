@@ -1,16 +1,21 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { invoicesQueryOptions } from '../utils/queryOptions'
+import { api } from '../../convex/_generated/api'
+import { convexQueryOptions } from '../main'
 
 export const Route = createFileRoute('/dashboard/')({
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+    opts.context.queryClient.ensureQueryData(
+      convexQueryOptions(api.data.getInvoices, {}),
+    ),
   component: DashboardIndexComponent,
 })
 
 function DashboardIndexComponent() {
-  const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
+  const invoicesQuery = useSuspenseQuery(
+    convexQueryOptions(api.data.getInvoices, {}),
+  )
   const invoices = invoicesQuery.data
 
   return (

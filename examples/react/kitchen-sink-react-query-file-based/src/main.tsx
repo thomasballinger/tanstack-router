@@ -10,10 +10,25 @@ import { Spinner } from './components/Spinner'
 import { routeTree } from './routeTree.gen'
 import { useSessionStorage } from './hooks/useSessionStorage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConvexReactClient } from 'convex/react'
+import { ConvexQueryClient, convexQueryKeyHashFn } from 'convex-tanstack-query'
+// this is optional
+import { ConvexProvider } from 'convex/react'
+import { loaderDelayFn } from './utils/utils'
+import { FunctionReference, getFunctionName } from 'convex/server'
 
-//
+const convexClient = new ConvexReactClient(
+  // @ts-expect-error This example is not configured for import.meta use (but it works)
+  (import.meta as any).env.VITE_CONVEX_URL,
+)
 
-export const queryClient = new QueryClient()
+export const queryClient = new QueryClient({
+  defaultOptions: { queries: { queryKeyHashFn: convexQueryKeyHashFn } },
+})
+export const convexQueryClient = new ConvexQueryClient(convexClient, {
+  queryClient,
+})
+export const convexQueryOptions = convexQueryClient.queryOptions
 
 const router = createRouter({
   routeTree,
@@ -26,6 +41,7 @@ const router = createRouter({
   context: {
     auth: undefined!, // We'll inject this when we render
     queryClient,
+    convexQueryClient,
   },
   defaultPreload: 'intent',
   // Since we're using React Query, we don't want loader calls to ever be stale
@@ -145,7 +161,9 @@ if (!rootElement.innerHTML) {
   root.render(
     // <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ConvexProvider client={convexClient}>
+        <App />
+      </ConvexProvider>
     </QueryClientProvider>,
     // </React.StrictMode>
   )

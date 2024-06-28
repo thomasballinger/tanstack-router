@@ -9,7 +9,8 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
-import { usersQueryOptions } from '../utils/queryOptions'
+import { api } from '../../convex/_generated/api'
+import { convexQueryOptions } from '../main'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
@@ -33,14 +34,18 @@ export const Route = createFileRoute('/dashboard/users')({
     }),
   ],
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(usersQueryOptions(opts.deps)),
+    opts.context.queryClient.ensureQueryData(
+      convexQueryOptions(api.data.getUsers, {}), //opts.deps),
+    ),
   component: UsersComponent,
 })
 
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const { usersView } = Route.useSearch()
-  const usersQuery = useSuspenseQuery(usersQueryOptions(Route.useLoaderDeps()))
+  const usersQuery = useSuspenseQuery(
+    convexQueryOptions(api.data.getUsers, {}), //Route.useLoaderDeps()),
+  )
   const users = usersQuery.data
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
@@ -138,7 +143,7 @@ function UsersComponent() {
                   {user.name}{' '}
                   <MatchRoute
                     to="/dashboard/users/user"
-                    search={(d) => ({
+                    search={(d: any) => ({
                       ...d,
                       userId: user.id,
                     })}

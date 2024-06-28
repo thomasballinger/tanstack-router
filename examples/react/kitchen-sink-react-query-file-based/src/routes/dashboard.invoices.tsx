@@ -7,16 +7,22 @@ import {
 } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Spinner } from '../components/Spinner'
-import { invoicesQueryOptions } from '../utils/queryOptions'
+import { api } from '../../convex/_generated/api'
+import { convexQueryOptions } from '../main'
 
 export const Route = createFileRoute('/dashboard/invoices')({
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
+    opts.context.queryClient.ensureQueryData(
+      // TODO is this supposed to come from opts?
+      convexQueryOptions(api.data.getInvoices, {}),
+    ),
   component: InvoicesComponent,
 })
 
 function InvoicesComponent() {
-  const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
+  const invoicesQuery = useSuspenseQuery(
+    convexQueryOptions(api.data.getInvoices, {}),
+  )
   const invoices = invoicesQuery.data
 
   return (
