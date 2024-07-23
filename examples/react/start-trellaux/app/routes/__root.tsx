@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools/production'
 import {
   Link,
@@ -10,14 +11,16 @@ import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Body, Head, Html, Meta, Scripts } from '@tanstack/start'
 import * as React from 'react'
 import { Toaster } from 'react-hot-toast'
-import type { QueryClient } from '@tanstack/react-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { IconLink } from '~/components/IconLink'
 import { NotFound } from '~/components/NotFound'
 // @ts-expect-error
+import { ClerkProvider, useAuth } from '@clerk/tanstack-start'
+import { useConvex } from 'convex/react'
+import { ConvexProviderWithClerk } from 'convex/react-clerk'
+import { Loader } from '~/components/Loader'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
-import { Loader } from '~/components/Loader'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -70,10 +73,16 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
+  const client = useConvex()
+  console.log(client)
   return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
+    <ClerkProvider>
+      <ConvexProviderWithClerk client={client} useAuth={useAuth}>
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
   )
 }
 
