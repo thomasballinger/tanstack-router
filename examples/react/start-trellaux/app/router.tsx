@@ -11,13 +11,8 @@ import toast from 'react-hot-toast'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
 import { routeTree } from './routeTree.gen'
-import { ConvexReactClient } from 'convex/react'
 
 const convexClientContext = createContext<any | null>(null)
-
-export const convex = new ConvexReactClient(
-  (import.meta as any).env.VITE_CONVEX_URL!,
-)
 
 export const useConvexClient = () => {
   return useContext(convexClientContext)
@@ -30,7 +25,12 @@ export function createRouter() {
     notifyManager.setScheduler(window.requestAnimationFrame)
   }
 
-  const convexQueryClient = new ConvexQueryClient(convex)
+  // TODO how to access envars?
+  const CONVEX_URL = (import.meta as any).env.VITE_CONVEX_URL!
+  if (!CONVEX_URL) {
+    throw new Error('missing envar')
+  }
+  const convexQueryClient = new ConvexQueryClient(CONVEX_URL)
 
   const queryClient: QueryClient = new QueryClient({
     defaultOptions: {
@@ -54,6 +54,11 @@ export function createRouter() {
       defaultPreload: 'intent',
       defaultErrorComponent: DefaultCatchBoundary,
       defaultNotFoundComponent: () => <NotFound />,
+      Wrap: ({ children }) => (
+        <ConvexClientProvider value={convexQueryClient.convexClient}>
+          {children}
+        </ConvexClientProvider>
+      ),
     }),
     queryClient,
   )
