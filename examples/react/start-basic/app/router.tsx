@@ -9,6 +9,15 @@ export function createRouter() {
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
+    Wrap: ({ children }) => {
+      console.log('this seems to run twice')
+      return (
+        <div>
+          This must be very outside of everything?
+          {children}
+        </div>
+      )
+    },
   })
 
   return router
