@@ -1,7 +1,7 @@
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { createOption } from '@commander-js/extra-typings'
-import { InvalidArgumentError, input } from '@inquirer/prompts'
+import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
+import { input } from '@inquirer/prompts'
 import {
   checkFolderExists,
   checkFolderIsEmpty,
