@@ -6,9 +6,9 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    environment: 'jsdom',
+    environment: 'node',
     typecheck: { enabled: true },
-    // setupFiles: ['./tests/setupTests.tsx'],
+    setupFiles: ['./tests/setupTests.tsx'],
   },
 })
 

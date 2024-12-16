@@ -29,13 +29,13 @@ export const logo = () => {
       .join('\n')
   }
 
-  const logo = gradient(['#00bba6', '#8a5eec'], {
-    // interpolation: 'hsv',
-  }).multiline(padLeft(removeLeadngChars(logoText)))
+  // Create the gradients first
+  const logoGradient = gradient(['#00bba6', '#8a5eec'])
+  const startGradient = gradient(['#00bba6', '#00bba6'])
 
-  const start = gradient(['#00bba6', '#00bba6'], {
-    // interpolation: 'hsv',
-  }).multiline(padLeft(removeLeadngChars(startText)))
+  // Then apply them to the processed text
+  const logo = logoGradient.multiline(padLeft(removeLeadngChars(logoText)))
+  const start = startGradient.multiline(padLeft(removeLeadngChars(startText)))
 
   console.log()
   console.log(logo)

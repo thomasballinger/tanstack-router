@@ -3344,6 +3344,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.1
         version: 18.3.1
+      gradient-string:
+        specifier: ^3.0.0
+        version: 3.0.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -3363,9 +3366,6 @@ importers:
       '@inquirer/type':
         specifier: ^3.0.1
         version: 3.0.1(@types/node@22.8.6)
-      '@playwright/test':
-        specifier: ^1.48.2
-        version: 1.49.0
       '@types/cross-spawn':
         specifier: ^6.0.6
         version: 6.0.6
@@ -3378,21 +3378,12 @@ importers:
       fast-glob:
         specifier: ^3.3.2
         version: 3.3.2
-      get-port-please:
-        specifier: ^3.1.2
-        version: 3.1.2
-      gradient-string:
-        specifier: ^3.0.0
-        version: 3.0.0
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
       tempy:
         specifier: ^3.1.0
         version: 3.1.0
-      terminate:
-        specifier: ^2.8.0
-        version: 2.8.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -3402,18 +3393,12 @@ importers:
       validate-npm-package-name:
         specifier: ^5.0.1
         version: 5.0.1
-      wait-port:
-        specifier: ^1.1.0
-        version: 1.1.0
       yocto-spinner:
         specifier: ^0.1.1
         version: 0.1.1
       zod:
         specifier: ^3.23.8
         version: 3.23.8
-      zod-opts:
-        specifier: ^0.1.8
-        version: 0.1.8
 
   packages/eslint-plugin-router:
     dependencies:
@@ -11369,10 +11354,6 @@ packages:
   zip-stream@6.0.1:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
-
-  zod-opts@0.1.8:
-    resolution: {integrity: sha512-YZhdEcIL3D2W9fXCCf/UBgrBS90c8w25RTteh5GihGIZzadYr/qIFxyM2L98zHUkZ2S8MMxwn3ny8fzPNnvPlg==}
-    engines: {node: '>=16'}
 
   zod@3.23.8:
     resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
@@ -19698,10 +19679,6 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.5.2
-
-  zod-opts@0.1.8:
-    dependencies:
-      zod: 3.23.8
 
   zod@3.23.8: {}
 
