@@ -5,6 +5,9 @@ import { createModule } from '../module'
 import { SUPPORTED_PACKAGE_MANAGERS } from '../constants'
 import { getPackageManager } from '../utils/getPackageManager'
 import { install } from '../utils/runPackageManagerCommand'
+import { createDebugger } from '../utils/debug'
+
+const debug = createDebugger('packageManager')
 
 const schema = z.object({
   packageManager: z.enum(SUPPORTED_PACKAGE_MANAGERS),
@@ -20,6 +23,7 @@ export const packageManagerOption = createOption(
   `use this Package Manager (${options.join(', ')})`,
 ).argParser((value) => {
   if (!options.includes(value as PackageManager)) {
+    debug.error('Invalid package manager provided', { value, allowed: options })
     throw new InvalidArgumentError(
       `Invalid Package Manager: ${value}. Only the following are allowed: ${options.join(', ')}`,
     )
@@ -35,14 +39,18 @@ const packageManager = createModule(
 )
   .init((schema) =>
     schema.transform((vals) => {
+      debug.verbose('Initializing package manager', vals)
+      const detectedPM = getPackageManager()
+      debug.verbose('Detected package manager', { detectedPM })
       return {
-        packageManager: vals.packageManager ?? getPackageManager(),
+        packageManager: vals.packageManager ?? detectedPM,
         installDeps: vals.installDeps,
       }
     }),
   )
   .prompt((schema) =>
     schema.transform(async (vals) => {
+      debug.verbose('Prompting for package manager options', vals)
       const packageManager =
         vals.packageManager != undefined
           ? vals.packageManager
@@ -64,6 +72,10 @@ const packageManager = createModule(
               default: 'yes',
             })
 
+      debug.verbose('Package manager options selected', {
+        packageManager,
+        installDeps,
+      })
       return {
         installDeps,
         packageManager,
@@ -72,6 +84,7 @@ const packageManager = createModule(
   )
   .validateAndApply({
     spinnerConfigFn: (cfg) => {
+      debug.verbose('Configuring spinner', cfg)
       return cfg.installDeps
         ? {
             error: `Failed to install dependencies with ${cfg.packageManager}`,
@@ -82,7 +95,14 @@ const packageManager = createModule(
     },
     apply: async ({ cfg, targetPath }) => {
       if (cfg.installDeps) {
+        debug.info('Installing dependencies', {
+          packageManager: cfg.packageManager,
+          targetPath,
+        })
         await install(cfg.packageManager, targetPath)
+        debug.info('Dependencies installed successfully')
+      } else {
+        debug.info('Skipping dependency installation')
       }
     },
   })

@@ -1,8 +1,6 @@
 import yoctoSpinner from 'yocto-spinner'
-import {
-  checkFolderExists,
-  checkFolderIsEmpty,
-} from './utils/helpers/base-utils'
+import { checkFolderExists, checkFolderIsEmpty } from './utils/helpers'
+import { createDebugger } from './utils/debug'
 import type {
   ParseReturnType,
   SafeParseReturnType,
@@ -13,6 +11,8 @@ import type {
 } from 'zod'
 import type { Spinner } from 'yocto-spinner'
 
+const debug = createDebugger('module')
+
 type Schema = ZodType<any, any, any>
 
 class ModuleBase<TSchema extends Schema> {
@@ -20,11 +20,13 @@ class ModuleBase<TSchema extends Schema> {
 
   constructor(baseSchema: TSchema) {
     this._baseSchema = baseSchema
+    debug.info('Creating new module')
   }
 
   init<TInitSchema extends Schema>(
     fn: (baseSchema: TSchema) => TInitSchema,
   ): InitModule<TSchema, TInitSchema> {
+    debug.verbose('Initializing module with schema transformer')
     const schema = fn(this._baseSchema)
     return new InitModule<TSchema, TInitSchema>(this._baseSchema, schema)
   }
@@ -37,11 +39,13 @@ class InitModule<TSchema extends Schema, TInitSchema extends Schema> {
   constructor(baseSchema: TSchema, initSchema: TInitSchema) {
     this._baseSchema = baseSchema
     this._initSchema = initSchema
+    debug.verbose('Created init module')
   }
 
   prompt<TPromptSchema extends Schema>(
     fn: (initSchema: TInitSchema) => TPromptSchema,
   ): PromptModule<TSchema, TInitSchema, TPromptSchema> {
+    debug.verbose('Creating prompt module with schema transformer')
     const schema = fn(this._initSchema)
     return new PromptModule<TSchema, TInitSchema, TPromptSchema>(
       this._baseSchema,
@@ -68,6 +72,7 @@ class PromptModule<
     this._baseSchema = baseSchema
     this._initSchema = initSchema
     this._promptSchema = promptSchema
+    debug.verbose('Created prompt module')
   }
 
   validateAndApply<
@@ -82,6 +87,7 @@ class PromptModule<
     apply: TApplyFn
     spinnerConfigFn?: SpinnerConfigFn<TPromptSchema>
   }): FinalModule<TSchema, TInitSchema, TPromptSchema, TValidateFn, TApplyFn> {
+    debug.verbose('Creating final module with validate and apply functions')
     return new FinalModule<
       TSchema,
       TInitSchema,
@@ -147,27 +153,32 @@ class FinalModule<
     this._applyFn = applyFn
     this._validateFn = validateFn
     if (spinnerConfigFn) this._spinnerConfigFn = spinnerConfigFn
+    debug.verbose('Created final module')
   }
 
   async init(cfg: input<TInitSchema>): Promise<ParseReturnType<TInitSchema>> {
+    debug.verbose('Running init', { cfg })
     return await this._initSchema.parseAsync(cfg)
   }
 
   public async initSafe(
     cfg: input<TInitSchema>,
   ): Promise<SafeParseReturnType<input<TInitSchema>, output<TInitSchema>>> {
+    debug.verbose('Running safe init', { cfg })
     return await this._initSchema.safeParseAsync(cfg)
   }
 
   public async prompt(
     cfg: input<TPromptSchema>,
   ): Promise<SafeParseReturnType<input<TPromptSchema>, output<TPromptSchema>>> {
+    debug.verbose('Running prompt', { cfg })
     return await this._promptSchema.parseAsync(cfg)
   }
 
   public async validate(
     cfg: input<TPromptSchema>,
   ): Promise<SafeParseReturnType<input<TPromptSchema>, output<TPromptSchema>>> {
+    debug.verbose('Running validate', { cfg })
     return await this._promptSchema.safeParseAsync(cfg)
   }
 
@@ -178,6 +189,7 @@ class FinalModule<
     cfg: output<TPromptSchema>
     targetPath: string
   }) {
+    debug.verbose('Running apply', { cfg, targetPath })
     const spinnerOptions = this._spinnerConfigFn?.(cfg)
     await runWithSpinner({
       fn: async () => {
@@ -198,11 +210,16 @@ class FinalModule<
     type: 'new-project' | 'update'
     applyingMessage?: string
   }) {
+    debug.info('Executing module', { type, targetPath })
+
     const targetExists = await checkFolderExists(targetPath)
     const targetIsEmpty = await checkFolderIsEmpty(targetPath)
 
+    debug.verbose('Target directory status', { targetExists, targetIsEmpty })
+
     if (type === 'new-project') {
       if (targetExists && !targetIsEmpty) {
+        debug.error('Target directory is not empty for new project')
         console.error("The target folder isn't empty")
         process.exit(0)
       }
@@ -210,20 +227,26 @@ class FinalModule<
 
     if (type === 'update') {
       if (!targetExists) {
+        debug.error('Target directory does not exist for update')
         console.error("The target folder doesn't exist")
         process.exit(0)
       }
     }
 
+    debug.verbose('Parsing init state')
     const initState = await this._initSchema.parseAsync(cfg)
 
+    debug.verbose('Parsing prompt state')
     const promptState = await this._promptSchema.parseAsync(initState)
 
     if (applyingMessage) {
       console.log()
       console.log(applyingMessage)
     }
+
+    debug.verbose('Applying module')
     await this.apply({ cfg: promptState, targetPath })
+    debug.info('Module execution complete')
   }
 }
 
@@ -257,6 +280,7 @@ export const runWithSpinner = async ({
     if (spinnerOptions) {
       spinner!.error(spinnerOptions.error)
     }
+    debug.error('Error in spinner operation', e)
     throw e
   }
 }

@@ -2,7 +2,10 @@ import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
 import { z } from 'zod'
 import { select } from '@inquirer/prompts'
 import { createModule } from '../module'
+import { createDebugger } from '../utils/debug'
 import { vsCodeModule } from './vscode'
+
+const debug = createDebugger('ide-module')
 
 const ide = z.enum(['vscode', 'cursor', 'other'])
 
@@ -18,7 +21,9 @@ export const ideCliOption = createOption(
   `--ide <${SUPPORTED_IDES.join('|')}>`,
   `use this IDE (${SUPPORTED_IDES.join(', ')})`,
 ).argParser((value) => {
+  debug.verbose('Parsing IDE CLI option', { value })
   if (!SUPPORTED_IDES.includes(value as SupportedIDE)) {
+    debug.error('Invalid IDE option provided', null, { value })
     throw new InvalidArgumentError(
       `Invalid IDE: ${value}. Only the following are allowed: ${SUPPORTED_IDES.join(', ')}`,
     )
@@ -30,6 +35,7 @@ export const ideModule = createModule(schema)
   .init((schema) => schema)
   .prompt((schema) =>
     schema.transform(async (vals) => {
+      debug.verbose('Prompting for IDE selection', { currentValue: vals.ide })
       const ide = vals.ide
         ? vals.ide
         : await select({
@@ -38,6 +44,7 @@ export const ideModule = createModule(schema)
             default: DEFAULT_IDE,
           })
 
+      debug.info('IDE selected', { ide })
       return {
         ide,
       }
@@ -45,19 +52,31 @@ export const ideModule = createModule(schema)
   )
   .validateAndApply({
     validate: async ({ cfg, targetPath }) => {
+      debug.verbose('Validating IDE configuration', {
+        ide: cfg.ide,
+        targetPath,
+      })
       const issues: Array<string> = []
 
       if (cfg.ide === 'vscode') {
+        debug.verbose('Validating VSCode configuration')
         const issuesVsCode =
           (await vsCodeModule._validateFn?.({ cfg, targetPath })) ?? []
         issues.push(...issuesVsCode)
       }
+
+      if (issues.length > 0) {
+        debug.warn('IDE validation issues found', { issues })
+      }
       return issues
     },
     apply: async ({ cfg, targetPath }) => {
+      debug.info('Applying IDE configuration', { ide: cfg.ide, targetPath })
       await vsCodeModule._applyFn({ cfg, targetPath })
+      debug.info('IDE configuration applied successfully')
     },
     spinnerConfigFn: (cfg) => {
+      debug.verbose('Configuring spinner for IDE setup', { ide: cfg.ide })
       return ['vscode'].includes(cfg.ide)
         ? {
             error: `Failed to set up ${cfg.ide}`,
@@ -67,42 +86,3 @@ export const ideModule = createModule(schema)
         : undefined
     },
   })
-
-// export const ideModuleaa = createModule({
-//   interimStateSchema: schema.partial(),
-//   finalStateSchema: schema,
-// })
-//   .promptFn(async ({ state }) => {
-//     const ide = state.ide
-//       ? state.ide
-//       : await select({
-//           message: 'Select an IDE',
-//           choices: SUPPORTED_IDES.map((ide) => ({ value: ide })),
-//           default: DEFAULT_IDE,
-//         })
-
-//     return {
-//       ide,
-//     }
-//   })
-//   .validateFn(async ({ state, targetPath }) => {
-//     const issues: Array<string> = []
-
-//     if (state.ide === 'vscode') {
-//       const issuesVsCode = await vsCodeModule._validate({ state, targetPath })
-//       issues.push(...issuesVsCode)
-//     }
-//     return issues
-//   })
-//   .spinnerConfig(({ state }) => {
-//     return ['vscode'].includes(state.ide)
-//       ? {
-//           error: `Failed to set up ${state.ide}`,
-//           inProgress: `Setting up ${state.ide}`,
-//           success: `${state.ide} set up`,
-//         }
-//       : undefined
-//   })
-//   .applyFn(async ({ state, targetPath }) => {
-//     await vsCodeModule._apply({ state, targetPath })
-//   })

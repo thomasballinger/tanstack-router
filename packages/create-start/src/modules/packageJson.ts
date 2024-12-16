@@ -6,6 +6,9 @@ import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
 import { initHelpers } from '../utils/helpers'
 import { createModule } from '../module'
 import { validateProjectName } from '../utils/validateProjectName'
+import { createDebugger } from '../utils/debug'
+
+const debug = createDebugger('package-json')
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -16,8 +19,10 @@ export const packageNameCliOption = createOption(
 ).argParser((name) => {
   const validation = validateProjectName(name)
   if (!validation.valid) {
+    debug.error('Invalid package name', { name, validation })
     throw new InvalidArgumentError(`The project name ${name} is invalid`)
   }
+  debug.verbose('Validated package name', { name })
   return name
 })
 
@@ -45,6 +50,7 @@ const packageJsonModule = createModule(schema)
   .init((schema) => schema)
   .prompt((schema) => {
     return schema.transform(async (vals) => {
+      debug.verbose('Transforming prompt schema', vals)
       if (vals.type === 'new') {
         const name = vals.name
           ? vals.name
@@ -54,8 +60,13 @@ const packageJsonModule = createModule(schema)
               validate: (name) => {
                 const validation = validateProjectName(name)
                 if (validation.valid) {
+                  debug.verbose('Valid project name entered', { name })
                   return true
                 }
+                debug.warn('Invalid project name entered', {
+                  name,
+                  problems: validation.problems,
+                })
                 return 'Invalid project name: ' + validation.problems[0]
               },
             })
@@ -71,21 +82,29 @@ const packageJsonModule = createModule(schema)
   })
   .validateAndApply({
     validate: async ({ cfg, targetPath }) => {
+      debug.verbose('Validating package.json', { cfg, targetPath })
       const issues: Array<string> = []
       const _ = initHelpers(__dirname, targetPath)
 
       const packageJsonExists = await _.targetFileExists('./package.json')
+      debug.verbose('Package.json exists check', { exists: packageJsonExists })
 
       if (cfg.type === 'new') {
-        if (packageJsonExists) issues.push('Package.json already exists')
+        if (packageJsonExists) {
+          debug.warn('Package.json already exists for new project')
+          issues.push('Package.json already exists')
+        }
       } else {
-        if (!packageJsonExists)
+        if (!packageJsonExists) {
+          debug.warn('Package.json missing for update')
           issues.push("Package.json doesn't exist to update")
+        }
       }
 
       return issues
     },
     apply: async ({ cfg, targetPath }) => {
+      debug.verbose('Applying package.json changes', { cfg, targetPath })
       const _ = initHelpers(__dirname, targetPath)
       if (cfg.type === 'new') {
         const packageJson = {
@@ -95,6 +114,7 @@ const packageJsonModule = createModule(schema)
           type: 'module',
         }
 
+        debug.verbose('Creating new package.json', packageJson)
         await _.writeTargetfile(
           './package.json',
           JSON.stringify(packageJson, null, 2),
@@ -103,6 +123,7 @@ const packageJsonModule = createModule(schema)
       }
 
       let packageJson = JSON.parse(await _.readTargetFile('./package.json'))
+      debug.verbose('Current package.json contents', packageJson)
 
       const dependenciesRecord = createDepsRecord(cfg.dependencies ?? [])
       const devDependenciesRecord = createDepsRecord(cfg.devDependencies ?? [])
@@ -124,6 +145,7 @@ const packageJsonModule = createModule(schema)
         },
       }
 
+      debug.verbose('Updated package.json contents', packageJson)
       await _.writeTargetfile(
         './package.json',
         JSON.stringify(packageJson, null, 2),

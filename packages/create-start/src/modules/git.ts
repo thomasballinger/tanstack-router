@@ -2,6 +2,9 @@ import { z } from 'zod'
 import { select } from '@inquirer/prompts'
 import { createModule } from '../module'
 import { initGit } from '../utils/runCmd'
+import { createDebugger } from '../utils/debug'
+
+const debug = createDebugger('git-module')
 
 export const gitModule = createModule(
   z.object({
@@ -11,6 +14,7 @@ export const gitModule = createModule(
   .init((schema) => schema) // No init required
   .prompt((schema) =>
     schema.transform(async (vals) => {
+      debug.verbose('Transforming git prompt schema', { vals })
       const setupGit =
         vals.setupGit != undefined
           ? vals.setupGit
@@ -22,6 +26,7 @@ export const gitModule = createModule(
               ],
               default: 'yes',
             })
+      debug.info('Git initialization choice made', { setupGit })
       return {
         setupGit,
       }
@@ -29,8 +34,18 @@ export const gitModule = createModule(
   )
   .validateAndApply({
     apply: async ({ cfg, targetPath }) => {
+      debug.verbose('Applying git module', { cfg, targetPath })
       if (cfg.setupGit) {
-        await initGit(targetPath)
+        debug.info('Initializing git repository')
+        try {
+          await initGit(targetPath)
+          debug.info('Git repository initialized successfully')
+        } catch (error) {
+          debug.error('Failed to initialize git repository', error)
+          throw error
+        }
+      } else {
+        debug.info('Skipping git initialization')
       }
     },
     spinnerConfigFn: () => {

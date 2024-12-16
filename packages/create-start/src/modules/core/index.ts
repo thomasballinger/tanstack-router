@@ -1,8 +1,3 @@
-// // The core module for creating a Tanstack Start app
-// // Also calls the:
-// // - ide module - to set ide specific settings
-// // - packageJson module - create a packageJson file with up-to-date packages
-
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
@@ -13,9 +8,12 @@ import packageJson from '../../../package.json' assert { type: 'json' }
 import packageManagerModule from '../packageManager'
 import { initHelpers } from '../../utils/helpers'
 import { gitModule } from '../git'
+import { createDebugger } from '../../utils/debug'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+const debug = createDebugger('core-module')
 
 export const coreModule = createModule(
   z.object({
@@ -27,6 +25,8 @@ export const coreModule = createModule(
 )
   .init((schema) =>
     schema.transform(async (vals, ctx) => {
+      debug.verbose('Initializing core module schema', { vals })
+
       const packageJson: z.infer<typeof packageJsonModule._initSchema> = {
         type: 'new',
         dependencies: await deps([
@@ -54,6 +54,7 @@ export const coreModule = createModule(
         ...vals.packageJson,
       }
 
+      debug.verbose('Parsing package manager schema')
       const packageManager =
         await packageManagerModule._initSchema.safeParseAsync(
           vals.packageManager,
@@ -61,20 +62,30 @@ export const coreModule = createModule(
             path: ['packageManager'],
           },
         )
+
+      debug.verbose('Parsing IDE schema')
       const ide = await ideModule._initSchema.safeParseAsync(vals.ide, {
         path: ['ide'],
       })
+
+      debug.verbose('Parsing git schema')
       const git = await gitModule._initSchema.safeParseAsync(vals.git, {
         path: ['git'],
       })
 
       if (!ide.success || !packageManager.success || !git.success) {
+        debug.error('Schema validation failed', null, {
+          ide: ide.success,
+          packageManager: packageManager.success,
+          git: git.success,
+        })
         ide.error?.issues.forEach((i) => ctx.addIssue(i))
         packageManager.error?.issues.forEach((i) => ctx.addIssue(i))
         git.error?.issues.forEach((i) => ctx.addIssue(i))
-        throw Error('Failed vlaidation')
+        throw Error('Failed validation')
       }
 
+      debug.verbose('Schema transformation complete')
       return {
         ...vals,
         packageManager: packageManager.data,
@@ -86,20 +97,26 @@ export const coreModule = createModule(
   )
   .prompt((schema) =>
     schema.transform(async (vals, ctx) => {
+      debug.verbose('Running prompt transformations', { vals })
+
+      debug.verbose('Parsing IDE prompt schema')
       const ide = await ideModule._promptSchema.safeParseAsync(vals.ide, {
         path: ['ide'],
       })
 
+      debug.verbose('Parsing package manager prompt schema')
       const packageManager =
         await packageManagerModule._promptSchema.safeParseAsync(
           vals.packageManager,
           { path: ['packageManager'] },
         )
 
+      debug.verbose('Parsing git prompt schema')
       const git = await gitModule._promptSchema.safeParseAsync(vals.git, {
         path: ['git'],
       })
 
+      debug.verbose('Parsing package.json prompt schema')
       const packageJson = await packageJsonModule._promptSchema.safeParseAsync(
         vals.packageJson,
         {
@@ -113,12 +130,19 @@ export const coreModule = createModule(
         !git.success ||
         !packageJson.success
       ) {
+        debug.error('Prompt validation failed', null, {
+          ide: ide.success,
+          packageManager: packageManager.success,
+          git: git.success,
+          packageJson: packageJson.success,
+        })
         ide.error?.issues.forEach((i) => ctx.addIssue(i))
         packageManager.error?.issues.forEach((i) => ctx.addIssue(i))
         git.error?.issues.forEach((i) => ctx.addIssue(i))
-        throw Error('Failed vlaidation')
+        throw Error('Failed validation')
       }
 
+      debug.verbose('Prompt transformations complete')
       return {
         packageJson: packageJson.data,
         ide: ide.data,
@@ -129,6 +153,7 @@ export const coreModule = createModule(
   )
   .validateAndApply({
     validate: async ({ cfg, targetPath }) => {
+      debug.verbose('Validating core module', { targetPath })
       const _ = initHelpers(__dirname, targetPath)
 
       const issues = await _.getTemplateFilesThatWouldBeOverwritten({
@@ -139,15 +164,22 @@ export const coreModule = createModule(
       })
 
       if (ideModule._validateFn) {
-        const issues = await ideModule._validateFn({ cfg: cfg.ide, targetPath })
-        issues.push()
+        debug.verbose('Running IDE validation')
+        const ideIssues = await ideModule._validateFn({
+          cfg: cfg.ide,
+          targetPath,
+        })
+        issues.push(...ideIssues)
       }
 
+      debug.info('Validation complete', { issueCount: issues.length })
       return issues
     },
     apply: async ({ cfg, targetPath }) => {
+      debug.info('Applying core module', { targetPath })
       const _ = initHelpers(__dirname, targetPath)
 
+      debug.verbose('Copying core template files')
       await runWithSpinner({
         spinnerOptions: {
           inProgress: 'Copying core template files',
@@ -163,14 +195,22 @@ export const coreModule = createModule(
           }),
       })
 
+      debug.verbose('Applying package.json module')
       await packageJsonModule.apply({ cfg: cfg.packageJson, targetPath })
 
+      debug.verbose('Applying IDE module')
       await ideModule.apply({ cfg: cfg.ide, targetPath })
+
+      debug.verbose('Applying git module')
       await gitModule._applyFn({ cfg: cfg.git, targetPath })
+
+      debug.verbose('Applying package manager module')
       await packageManagerModule.apply({
         cfg: cfg.packageManager,
         targetPath,
       })
+
+      debug.info('Core module application complete')
     },
   })
 
@@ -187,6 +227,7 @@ const deps = async (
     undefined
   >
 > => {
+  debug.verbose('Resolving dependencies', { deps: depsArray })
   const result = await Promise.all(
     depsArray.map((d) => {
       const version =
