@@ -8,26 +8,30 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 export const vsCodeModule = createModule(z.object({}))
-  .validateFn(async ({ targetPath }) => {
-    const _ = initHelpers(import.meta.url, targetPath)
+  .init((schema) => schema)
+  .prompt((schema) => schema)
+  .validateAndApply({
+    validate: async ({ targetPath }) => {
+      const _ = initHelpers(__dirname, targetPath)
 
-    return await _.getTemplateFilesThatWouldBeOverwritten({
-      file: '**/*',
-      templateFolder: './template',
-      targetFolder: targetPath,
-      overwrite: false,
-    })
-  })
-  .applyFn(async ({ targetPath }) => {
-    // Copy the vscode template folders into the project
-    const _ = initHelpers(__dirname, targetPath)
+      return await _.getTemplateFilesThatWouldBeOverwritten({
+        file: '**/*',
+        templateFolder: './template',
+        targetFolder: targetPath,
+        overwrite: false,
+      })
+    },
+    apply: async ({ targetPath }) => {
+      // Copy the vscode template folders into the project
+      const _ = initHelpers(__dirname, targetPath)
 
-    // TODO: Handle when the settings file already exists and merge settings
+      // TODO: Handle when the settings file already exists and merge settings
 
-    await _.copyTemplateFiles({
-      file: '**/*',
-      templateFolder: './template',
-      targetFolder: '.',
-      overwrite: false,
-    })
+      await _.copyTemplateFiles({
+        file: '**/*',
+        templateFolder: './template',
+        targetFolder: '.',
+        overwrite: false,
+      })
+    },
   })

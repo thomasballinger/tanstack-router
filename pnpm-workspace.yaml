@@ -5,3 +5,4 @@ packages:
   - 'examples/react/router-monorepo-simple/packages/*'
   - 'e2e/react-router/*'
   - 'e2e/start/*'
+  - 'e2e/create-start'

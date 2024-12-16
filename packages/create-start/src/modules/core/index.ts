@@ -6,17 +6,173 @@
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
-import createPackageJson from '../createPackageJson'
-import { createModule } from '../../module'
+import packageJsonModule from '../packageJson'
+import { createModule, runWithSpinner } from '../../module'
 import { ideModule } from '../ide'
 import packageJson from '../../../package.json' assert { type: 'json' }
-import packageManager from '../packageManager'
-import { gitModule } from '../git'
+import packageManagerModule from '../packageManager'
 import { initHelpers } from '../../utils/helpers'
-import type addDependencies from '../addDependencies'
+import { gitModule } from '../git'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+export const coreModule = createModule(
+  z.object({
+    packageJson: packageJsonModule._initSchema.optional(),
+    ide: ideModule._initSchema.optional(),
+    packageManager: packageManagerModule._initSchema.optional(),
+    git: gitModule._initSchema.optional(),
+  }),
+)
+  .init((schema) =>
+    schema.transform(async (vals, ctx) => {
+      const packageJson: z.infer<typeof packageJsonModule._initSchema> = {
+        type: 'new',
+        dependencies: await deps([
+          '@tanstack/react-router',
+          '@tanstack/start',
+          'react',
+          'react-dom',
+          'vinxi',
+        ]),
+        devDependencies: await deps(['@types/react', '@types/react']),
+        scripts: [
+          {
+            name: 'dev',
+            script: 'vinxi dev',
+          },
+          {
+            name: 'build',
+            script: 'vinxi build',
+          },
+          {
+            name: 'start',
+            script: 'vinxi start',
+          },
+        ],
+        ...vals.packageJson,
+      }
+
+      const packageManager =
+        await packageManagerModule._initSchema.safeParseAsync(
+          vals.packageManager,
+          {
+            path: ['packageManager'],
+          },
+        )
+      const ide = await ideModule._initSchema.safeParseAsync(vals.ide, {
+        path: ['ide'],
+      })
+      const git = await gitModule._initSchema.safeParseAsync(vals.git, {
+        path: ['git'],
+      })
+
+      if (!ide.success || !packageManager.success || !git.success) {
+        ide.error?.issues.forEach((i) => ctx.addIssue(i))
+        packageManager.error?.issues.forEach((i) => ctx.addIssue(i))
+        git.error?.issues.forEach((i) => ctx.addIssue(i))
+        throw Error('Failed vlaidation')
+      }
+
+      return {
+        ...vals,
+        packageManager: packageManager.data,
+        ide: ide.data,
+        git: git.data,
+        packageJson,
+      }
+    }),
+  )
+  .prompt((schema) =>
+    schema.transform(async (vals, ctx) => {
+      const ide = await ideModule._promptSchema.safeParseAsync(vals.ide, {
+        path: ['ide'],
+      })
+
+      const packageManager =
+        await packageManagerModule._promptSchema.safeParseAsync(
+          vals.packageManager,
+          { path: ['packageManager'] },
+        )
+
+      const git = await gitModule._promptSchema.safeParseAsync(vals.git, {
+        path: ['git'],
+      })
+
+      const packageJson = await packageJsonModule._promptSchema.safeParseAsync(
+        vals.packageJson,
+        {
+          path: ['packageJson'],
+        },
+      )
+
+      if (
+        !ide.success ||
+        !packageManager.success ||
+        !git.success ||
+        !packageJson.success
+      ) {
+        ide.error?.issues.forEach((i) => ctx.addIssue(i))
+        packageManager.error?.issues.forEach((i) => ctx.addIssue(i))
+        git.error?.issues.forEach((i) => ctx.addIssue(i))
+        throw Error('Failed vlaidation')
+      }
+
+      return {
+        packageJson: packageJson.data,
+        ide: ide.data,
+        packageManager: packageManager.data,
+        git: git.data,
+      }
+    }),
+  )
+  .validateAndApply({
+    validate: async ({ cfg, targetPath }) => {
+      const _ = initHelpers(__dirname, targetPath)
+
+      const issues = await _.getTemplateFilesThatWouldBeOverwritten({
+        file: '**/*',
+        templateFolder: './template',
+        targetFolder: targetPath,
+        overwrite: false,
+      })
+
+      if (ideModule._validateFn) {
+        const issues = await ideModule._validateFn({ cfg: cfg.ide, targetPath })
+        issues.push()
+      }
+
+      return issues
+    },
+    apply: async ({ cfg, targetPath }) => {
+      const _ = initHelpers(__dirname, targetPath)
+
+      await runWithSpinner({
+        spinnerOptions: {
+          inProgress: 'Copying core template files',
+          error: 'Failed to copy core template files',
+          success: 'Copied core template files',
+        },
+        fn: async () =>
+          await _.copyTemplateFiles({
+            file: '**/*',
+            templateFolder: './template',
+            targetFolder: '.',
+            overwrite: false,
+          }),
+      })
+
+      await packageJsonModule.apply({ cfg: cfg.packageJson, targetPath })
+
+      await ideModule.apply({ cfg: cfg.ide, targetPath })
+      await gitModule._applyFn({ cfg: cfg.git, targetPath })
+      await packageManagerModule.apply({
+        cfg: cfg.packageManager,
+        targetPath,
+      })
+    },
+  })
 
 type DepNames<
   T extends
@@ -26,7 +182,10 @@ type DepNames<
 const deps = async (
   depsArray: Array<DepNames>,
 ): Promise<
-  Exclude<z.infer<typeof addDependencies._schema>['dependencies'], undefined>
+  Exclude<
+    z.infer<typeof packageJsonModule._initSchema>['dependencies'],
+    undefined
+  >
 > => {
   const result = await Promise.all(
     depsArray.map((d) => {
@@ -43,91 +202,3 @@ const deps = async (
 
   return result
 }
-
-export const coreModule = createModule(
-  z
-    .object({})
-    .merge(createPackageJson._schema)
-    .merge(ideModule._schema)
-    .merge(packageManager._schema)
-    .merge(gitModule._schema),
-)
-  .initFn(async ({ cfg, targetPath }) => {
-    const packageManagerInit = await packageManager._init({ cfg, targetPath })
-
-    return {
-      ...packageManagerInit,
-      scripts: [
-        {
-          name: 'dev',
-          script: 'vinxi dev',
-        },
-        {
-          name: 'build',
-          script: 'vinxi build',
-        },
-        {
-          name: 'start',
-          script: 'vinxi start',
-        },
-      ],
-      dependencies: await deps([
-        '@tanstack/react-router',
-        '@tanstack/start',
-        'react',
-        'react-dom',
-        'vinxi',
-      ]),
-      devDependencies: await deps(['@types/react', '@types/react']),
-    }
-  })
-  .promptFn(async ({ state, targetPath }) => {
-    const createPackageJsonPrompts = await createPackageJson._prompt({
-      state,
-      targetPath,
-    })
-
-    const ideModulePrompts = await ideModule._prompt({ state, targetPath })
-    const packageManagerPrompts = await packageManager._prompt({
-      state,
-      targetPath,
-    })
-    const gitModulePrompts = await gitModule._prompt({ state, targetPath })
-
-    return {
-      ...state,
-      ...gitModulePrompts,
-      ...packageManagerPrompts,
-      ...createPackageJsonPrompts,
-      ...ideModulePrompts,
-    }
-  })
-  .validateFn(async ({ state, targetPath }) => {
-    const _ = initHelpers(__dirname, targetPath)
-
-    const issues = await _.getTemplateFilesThatWouldBeOverwritten({
-      file: '**/*',
-      templateFolder: './template',
-      targetFolder: targetPath,
-      overwrite: false,
-    })
-
-    issues.push(...(await ideModule._validate({ state, targetPath })))
-
-    return issues
-  })
-  .applyFn(async ({ state, targetPath }) => {
-    const _ = initHelpers(__dirname, targetPath)
-
-    await _.copyTemplateFiles({
-      file: '**/*',
-      templateFolder: './template',
-      targetFolder: '.',
-      overwrite: false,
-    })
-
-    await createPackageJson._apply({ state, targetPath })
-    await ideModule._apply({ state, targetPath })
-    await gitModule._apply({ state, targetPath })
-    await packageManager._apply({ state, targetPath })
-  })

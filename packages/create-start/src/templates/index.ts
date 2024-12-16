@@ -2,7 +2,6 @@ import { select } from '@inquirer/prompts'
 import { InvalidArgumentError, createOption } from '@commander-js/extra-typings'
 import invariant from 'tiny-invariant'
 import { barebonesTemplate } from './barebones'
-import { showcaseTemplate } from './showcase'
 import type { coreModule } from '../modules/core'
 import type { z } from 'zod'
 
@@ -12,12 +11,6 @@ const templates = [
     name: 'Barebones',
     module: barebonesTemplate,
     description: 'The bare minimum',
-  },
-  {
-    id: 'showcase',
-    name: 'Showcase',
-    module: showcaseTemplate,
-    description: 'Showcasing the core features of Tanstack Start',
   },
 ] as const
 
@@ -54,14 +47,17 @@ export const scaffoldTemplate = async ({
   targetPath,
 }: {
   templateId: TEMPLATE_NAME
-  cfg: Partial<z.infer<typeof coreModule._schema>>
+  cfg: z.input<typeof coreModule._baseSchema>
   targetPath: string
 }) => {
-  const template = templates.find((f) => f.id === templateId)
+  // const template = templates.find((f) => f.id === templateId)
+  const template = templates[0] // Remove this when we add more templates
   invariant(template, `The template with ${templateId} is not valid`)
-  await template.module._execute({
+
+  await template.module.execute({
     cfg,
     targetPath,
     type: 'new-project',
+    applyingMessage: `Scaffolding the ${template.name} template`,
   })
 }

@@ -4,12 +4,14 @@ import { select } from '@inquirer/prompts'
 import { createModule } from '../module'
 import { vsCodeModule } from './vscode'
 
+const ide = z.enum(['vscode', 'cursor', 'other'])
+
 const schema = z.object({
-  ide: z.enum(['vscode', 'cursor', 'other']),
+  ide: ide.optional(),
 })
 
-const SUPPORTED_IDES = schema.shape.ide.options
-type SupportedIDE = z.infer<typeof schema>['ide']
+const SUPPORTED_IDES = ide.options
+type SupportedIDE = z.infer<typeof ide>
 const DEFAULT_IDE = 'vscode'
 
 export const ideCliOption = createOption(
@@ -25,37 +27,82 @@ export const ideCliOption = createOption(
 })
 
 export const ideModule = createModule(schema)
-  .promptFn(async ({ state }) => {
-    const ide = state.ide
-      ? state.ide
-      : await select({
-          message: 'Select an IDE',
-          choices: SUPPORTED_IDES.map((ide) => ({ value: ide })),
-          default: DEFAULT_IDE,
-        })
+  .init((schema) => schema)
+  .prompt((schema) =>
+    schema.transform(async (vals) => {
+      const ide = vals.ide
+        ? vals.ide
+        : await select({
+            message: 'Select an IDE',
+            choices: SUPPORTED_IDES.map((i) => ({ value: i })),
+            default: DEFAULT_IDE,
+          })
 
-    return {
-      ide,
-    }
-  })
-  .validateFn(async ({ state, targetPath }) => {
-    const issues: Array<string> = []
+      return {
+        ide,
+      }
+    }),
+  )
+  .validateAndApply({
+    validate: async ({ cfg, targetPath }) => {
+      const issues: Array<string> = []
 
-    if (state.ide === 'vscode') {
-      const issuesVsCode = await vsCodeModule._validate({ state, targetPath })
-      issues.push(...issuesVsCode)
-    }
-    return issues
+      if (cfg.ide === 'vscode') {
+        const issuesVsCode =
+          (await vsCodeModule._validateFn?.({ cfg, targetPath })) ?? []
+        issues.push(...issuesVsCode)
+      }
+      return issues
+    },
+    apply: async ({ cfg, targetPath }) => {
+      await vsCodeModule._applyFn({ cfg, targetPath })
+    },
+    spinnerConfigFn: (cfg) => {
+      return ['vscode'].includes(cfg.ide)
+        ? {
+            error: `Failed to set up ${cfg.ide}`,
+            inProgress: `Setting up ${cfg.ide}`,
+            success: `${cfg.ide} set up`,
+          }
+        : undefined
+    },
   })
-  .spinnerConfig(({ state }) => {
-    return ['vscode'].includes(state.ide)
-      ? {
-          error: `Failed to set up ${state.ide}`,
-          inProgress: `Setting up ${state.ide}`,
-          success: `${state.ide} set up`,
-        }
-      : undefined
-  })
-  .applyFn(async ({ state, targetPath }) => {
-    await vsCodeModule._apply({ state, targetPath })
-  })
+
+// export const ideModuleaa = createModule({
+//   interimStateSchema: schema.partial(),
+//   finalStateSchema: schema,
+// })
+//   .promptFn(async ({ state }) => {
+//     const ide = state.ide
+//       ? state.ide
+//       : await select({
+//           message: 'Select an IDE',
+//           choices: SUPPORTED_IDES.map((ide) => ({ value: ide })),
+//           default: DEFAULT_IDE,
+//         })
+
+//     return {
+//       ide,
+//     }
+//   })
+//   .validateFn(async ({ state, targetPath }) => {
+//     const issues: Array<string> = []
+
+//     if (state.ide === 'vscode') {
+//       const issuesVsCode = await vsCodeModule._validate({ state, targetPath })
+//       issues.push(...issuesVsCode)
+//     }
+//     return issues
+//   })
+//   .spinnerConfig(({ state }) => {
+//     return ['vscode'].includes(state.ide)
+//       ? {
+//           error: `Failed to set up ${state.ide}`,
+//           inProgress: `Setting up ${state.ide}`,
+//           success: `${state.ide} set up`,
+//         }
+//       : undefined
+//   })
+//   .applyFn(async ({ state, targetPath }) => {
+//     await vsCodeModule._apply({ state, targetPath })
+//   })

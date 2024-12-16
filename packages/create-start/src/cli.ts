@@ -7,7 +7,7 @@ import {
   templatePrompt,
 } from './templates'
 import { getAbsolutePath, newProjectDirectoryPrompt } from './directory'
-import { packageNameCliOption } from './modules/createPackageJson'
+import { packageNameCliOption } from './modules/packageJson'
 import { ideCliOption } from './modules/ide'
 import type { TEMPLATE_NAME } from './templates'
 
@@ -73,11 +73,20 @@ const program = addNewProjectOptions(
 
     await scaffoldTemplate({
       cfg: {
-        installDeps: options.installDeps,
-        packageManager: options.packageManager,
-        name: options.packageName,
-        setupGit: options.initGit,
-        ide: options.ide,
+        packageManager: {
+          packageManager: options.packageManager,
+          installDeps: options.installDeps,
+        },
+        packageJson: {
+          type: 'new',
+          name: options.packageName,
+        },
+        git: {
+          setupGit: options.initGit,
+        },
+        ide: {
+          ide: options.ide,
+        },
       },
       targetPath,
       templateId,

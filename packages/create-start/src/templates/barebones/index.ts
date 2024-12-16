@@ -1,52 +1,60 @@
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
-import { createModule } from '../../module'
+import { createModule, runWithSpinner } from '../../module'
 import { coreModule } from '../../modules/core'
 import { initHelpers } from '../../utils/helpers'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const schema = coreModule._schema
+const schema = coreModule._initSchema
 
 export const barebonesTemplate = createModule(schema)
-  .initFn(async (args) => {
-    const coreInit = await coreModule._init(args)
+  .init((schema) => schema)
+  .prompt((schema) =>
+    schema.transform(async (vals) => {
+      const core = await coreModule._promptSchema.parseAsync(vals)
 
-    return {
-      ...coreInit,
-    }
-  })
-  .promptFn(async (opts) => {
-    const corePrompts = await coreModule._prompt(opts)
+      return {
+        ...core,
+      }
+    }),
+  )
+  .validateAndApply({
+    validate: async ({ cfg, targetPath }) => {
+      const _ = initHelpers(__dirname, targetPath)
 
-    return {
-      ...corePrompts,
-    }
-  })
-  .validateFn(async ({ targetPath, state }) => {
-    const _ = initHelpers(__dirname, targetPath)
+      const issues = await _.getTemplateFilesThatWouldBeOverwritten({
+        file: '**/*',
+        templateFolder: './template',
+        targetFolder: targetPath,
+        overwrite: false,
+      })
 
-    const issues = await _.getTemplateFilesThatWouldBeOverwritten({
-      file: '**/*',
-      templateFolder: './template',
-      targetFolder: targetPath,
-      overwrite: false,
-    })
+      issues.push(
+        ...((await coreModule._validateFn?.({ cfg, targetPath })) ?? []),
+      )
 
-    issues.push(...(await coreModule._validate({ targetPath, state })))
+      return issues
+    },
+    apply: async ({ cfg, targetPath }) => {
+      const _ = initHelpers(__dirname, targetPath)
 
-    return issues
-  })
-  .applyFn(async ({ state, targetPath }) => {
-    const _ = initHelpers(__dirname, targetPath)
+      await runWithSpinner({
+        spinnerOptions: {
+          inProgress: 'Copying barebones template files',
+          error: 'Failed to copy barebones template files',
+          success: 'Copied barebones template files',
+        },
+        fn: async () =>
+          await _.copyTemplateFiles({
+            file: '**/*',
+            templateFolder: './template',
+            targetFolder: '.',
+            overwrite: false,
+          }),
+      })
 
-    await _.copyTemplateFiles({
-      file: '**/*',
-      templateFolder: './template',
-      targetFolder: '.',
-      overwrite: false,
-    })
-
-    await coreModule._apply({ state, targetPath })
+      await coreModule._applyFn({ cfg, targetPath })
+    },
   })

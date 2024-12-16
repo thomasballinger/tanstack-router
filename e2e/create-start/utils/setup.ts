@@ -10,6 +10,7 @@ async function _setup(
   PID: number
   ADDR: string
   killProcess: () => Promise<void>
+  deleteTempDir: () => void
 }> {
   const ADDR = `http://localhost:${port}`
 
@@ -24,12 +25,30 @@ async function _setup(
     const message = data.toString()
     console.log('Stdout:', message)
   })
-  await waitPort({ port: port })
+
+  childProcess.stderr?.on('data', (data) => {
+    console.error('Stderr:', data.toString())
+  })
+
+  try {
+    await waitPort({ port, timeout: 30000 }) // Added timeout
+  } catch (err) {
+    console.error('Failed to start server:', err)
+    throw err
+  }
 
   const PID = childProcess.pid!
-  const killProcess = () => terminate(PID)
+  const killProcess = async () => {
+    console.log('Killing process')
+    try {
+      await terminate(PID)
+    } catch (err) {
+      console.error('Failed to kill process:', err)
+    }
+  }
+  const deleteTempDir = () => execSync(`rm -rf ${projectPath}`)
 
-  return { PID, ADDR, killProcess }
+  return { PID, ADDR, killProcess, deleteTempDir }
 }
 
 type SetupApp = Awaited<ReturnType<typeof _setup>>
@@ -38,15 +57,16 @@ export const test = baseTest.extend<{
   setupApp: SetupApp
   projectPath: string
   port: number
+  ensureServer: void
 }>({
   projectPath: ['', { option: true }],
   port: [0, { option: true }],
-  // don't know why playwright wants this fist argument to be destructured
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  setupApp: async ({ page, projectPath, port }, use, testInfo) => {
-    const setup = await _setup(projectPath, port)
-    await use(setup)
-
-    execSync(`rm -rf ${projectPath}`)
-  },
+  ensureServer: [
+    async ({ projectPath, port }, use) => {
+      const setup = await _setup(projectPath, port)
+      await use()
+      await setup.killProcess()
+    },
+    { auto: true },
+  ],
 })

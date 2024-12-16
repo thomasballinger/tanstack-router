@@ -4,20 +4,23 @@ import { defineConfig, devices } from '@playwright/test'
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests/e2e-playwright/tests',
-  // timeout: 5 * 60 * 1000,
+  testDir: './tests',
 
   reporter: [['line']],
+  timeout: 60000,
+  use: {
+    trace: 'on-first-retry',
+  },
+  workers: 1,
 
   // use: {
   //   /* Base URL to use in actions like `await page.goto('/')`. */
-  //   baseURL: 'http://localhost:3003/',
+  //   baseURL: 'http://localhost:3001/',
   // },
 
   // webServer: {
-  //   // TODO: build && start seems broken, use that if it's working
   //   command: 'pnpm run dev',
-  //   url: 'http://localhost:3002',
+  //   url: 'http://localhost:3001',
   //   reuseExistingServer: !process.env.CI,
   //   stdout: 'pipe',
   // },

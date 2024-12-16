@@ -27,53 +27,64 @@ export const packageManagerOption = createOption(
   return value as PackageManager
 })
 
-const packageManager = createModule(schema)
-  .initFn(({ cfg }) => {
-    return {
-      ...cfg,
-      packageManager: cfg.packageManager ?? getPackageManager(),
-    }
-  })
-  .promptFn(async ({ state }) => {
-    const packageManager =
-      state.packageManager != undefined
-        ? state.packageManager
-        : await select({
-            message: 'Select a package manager',
-            choices: options.map((pm) => ({ value: pm })),
-            default: getPackageManager() ?? DEFAULT_PACKAGE_MANAGER,
-          })
-
-    const installDeps =
-      state.installDeps != undefined
-        ? state.installDeps
-        : await select({
-            message: 'Install dependencies',
-            choices: [
-              { name: 'yes', value: true },
-              { name: 'no', value: false },
-            ],
-            default: 'yes',
-          })
-
-    return {
-      installDeps,
-      packageManager,
-    }
-  })
-  .spinnerConfig(({ state }) =>
-    state.installDeps
-      ? {
-          error: `Failed to install dependencies with ${state.packageManager}`,
-          inProgress: `Installing dependencies with ${state.packageManager}`,
-          success: `Installed dependencies with ${state.packageManager}`,
-        }
-      : undefined,
+const packageManager = createModule(
+  z.object({
+    packageManager: z.enum(SUPPORTED_PACKAGE_MANAGERS).optional(),
+    installDeps: z.boolean().optional(),
+  }),
+)
+  .init((schema) =>
+    schema.transform((vals) => {
+      return {
+        packageManager: vals.packageManager ?? getPackageManager(),
+        installDeps: vals.installDeps,
+      }
+    }),
   )
-  .applyFn(async ({ state, targetPath }) => {
-    if (state.installDeps) {
-      await install(state.packageManager, targetPath)
-    }
+  .prompt((schema) =>
+    schema.transform(async (vals) => {
+      const packageManager =
+        vals.packageManager != undefined
+          ? vals.packageManager
+          : await select({
+              message: 'Select a package manager',
+              choices: options.map((pm) => ({ value: pm })),
+              default: getPackageManager() ?? DEFAULT_PACKAGE_MANAGER,
+            })
+
+      const installDeps =
+        vals.installDeps != undefined
+          ? vals.installDeps
+          : await select({
+              message: 'Install dependencies',
+              choices: [
+                { name: 'yes', value: true },
+                { name: 'no', value: false },
+              ],
+              default: 'yes',
+            })
+
+      return {
+        installDeps,
+        packageManager,
+      }
+    }),
+  )
+  .validateAndApply({
+    spinnerConfigFn: (cfg) => {
+      return cfg.installDeps
+        ? {
+            error: `Failed to install dependencies with ${cfg.packageManager}`,
+            inProgress: `Installing dependencies with ${cfg.packageManager}`,
+            success: `Installed dependencies with ${cfg.packageManager}`,
+          }
+        : undefined
+    },
+    apply: async ({ cfg, targetPath }) => {
+      if (cfg.installDeps) {
+        await install(cfg.packageManager, targetPath)
+      }
+    },
   })
 
 export default packageManager
