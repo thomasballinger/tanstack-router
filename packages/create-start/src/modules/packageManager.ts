@@ -99,6 +99,7 @@ export const packageManagerModule = createModule(
           packageManager: cfg.packageManager,
           targetPath,
         })
+
         await install(cfg.packageManager, targetPath)
         debug.info('Dependencies installed successfully')
       } else {

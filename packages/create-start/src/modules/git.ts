@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { select } from '@inquirer/prompts'
 import { createModule } from '../module'
-import { initGit } from '../utils/runCmd'
+import { runCmd } from '../utils/runCmd'
 import { createDebugger } from '../utils/debug'
 
 const debug = createDebugger('git-module')
@@ -38,7 +38,8 @@ export const gitModule = createModule(
       if (cfg.setupGit) {
         debug.info('Initializing git repository')
         try {
-          await initGit(targetPath)
+          await runCmd('git', ['init'])
+
           debug.info('Git repository initialized successfully')
         } catch (error) {
           debug.error('Failed to initialize git repository', error)
