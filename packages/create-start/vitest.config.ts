@@ -8,7 +8,6 @@ const config = defineConfig({
     watch: false,
     environment: 'node',
     typecheck: { enabled: true },
-    setupFiles: ['./tests/setupTests.tsx'],
   },
 })
 
