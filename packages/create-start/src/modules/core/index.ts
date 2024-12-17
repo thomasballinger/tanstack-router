@@ -1,11 +1,11 @@
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
-import packageJsonModule from '../packageJson'
+import { packageJsonModule } from '../packageJson'
 import { createModule, runWithSpinner } from '../../module'
 import { ideModule } from '../ide'
 import packageJson from '../../../package.json' assert { type: 'json' }
-import packageManagerModule from '../packageManager'
+import { packageManagerModule } from '../packageManager'
 import { initHelpers } from '../../utils/helpers'
 import { gitModule } from '../git'
 import { createDebugger } from '../../utils/debug'

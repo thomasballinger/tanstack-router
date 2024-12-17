@@ -31,7 +31,7 @@ export const packageManagerOption = createOption(
   return value as PackageManager
 })
 
-const packageManager = createModule(
+export const packageManagerModule = createModule(
   z.object({
     packageManager: z.enum(SUPPORTED_PACKAGE_MANAGERS).optional(),
     installDeps: z.boolean().optional(),
@@ -106,5 +106,3 @@ const packageManager = createModule(
       }
     },
   })
-
-export default packageManager

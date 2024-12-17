@@ -46,7 +46,7 @@ const schema = z.object({
   scripts: z.array(script).optional(),
 })
 
-const packageJsonModule = createModule(schema)
+export const packageJsonModule = createModule(schema)
   .init((schema) => schema)
   .prompt((schema) => {
     return schema.transform(async (vals) => {
@@ -158,8 +158,6 @@ const packageJsonModule = createModule(schema)
       inProgress: `${cfg.type === 'new' ? 'Creating' : 'Updating'} package.json`,
     }),
   })
-
-export default packageJsonModule
 
 const createDepsRecord = (deps: Array<{ name: string; version: string }>) =>
   deps.reduce(
