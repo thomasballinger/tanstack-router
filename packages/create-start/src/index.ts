@@ -2,6 +2,7 @@ import { createModule } from './module'
 import { ideModule as unstable_ideModule } from './modules/ide'
 import { gitModule as unstable_gitModule } from './modules/git'
 import { coreModule as unstable_coreModule } from './modules/core'
+import { convexModule as unstable_convex } from './modules/convex'
 import { packageJsonModule as unstable_packageJsonModule } from './modules/packageJson'
 import { packageManagerModule as unstable_packageManagerModule } from './modules/packageManager'
 
@@ -14,4 +15,5 @@ export const modules = {
   unstable_coreModule,
   unstable_packageJsonModule,
   unstable_packageManagerModule,
+  unstable_convex,
 }

@@ -21,6 +21,17 @@ export async function install(packageManager: PackageManager, cwd?: string) {
   )
 }
 
+export async function installPackages(packageManager: PackageManager, packageSpecs: string[], cwd?: string) {
+  return runPackageManagerCommand(
+    packageManager,
+    ['install', ...packageSpecs],
+    {
+      NODE_ENV: 'development',
+    },
+    cwd,
+  )
+}
+
 export async function build(packageManager: PackageManager, cwd?: string) {
   return runPackageManagerCommand(packageManager, ['run', 'build'], {}, cwd)
 }

@@ -1,4 +1,4 @@
-import { Command, createOption } from '@commander-js/extra-typings'
+import { Command, InvalidArgumentError, Option, createArgument, createOption } from '@commander-js/extra-typings'
 import { packageManagerOption } from './modules/packageManager'
 import { logo } from './logo'
 import {
@@ -11,6 +11,8 @@ import { getAbsolutePath, newProjectDirectoryPrompt } from './directory'
 import { packageNameCliOption } from './modules/packageJson'
 import { ideCliOption } from './modules/ide'
 import type { TEMPLATE_NAME } from './templates'
+import {modules} from '.'
+import invariant from 'tiny-invariant'
 
 const logger = createDebugger('cli')
 
@@ -32,7 +34,7 @@ const options = {
   hideLogo: createOption('--hide-logo', 'Hide the Tanstack Start logo'),
   ide: ideCliOption,
   debug: debugCliOption,
-}
+} satisfies Record<string, Option>;
 
 const addNewProjectOptions = (command: Command) => {
   return command
@@ -55,9 +57,37 @@ const addNewProjectOptions = (command: Command) => {
 //     .description('Add the Tanstack Query module'),
 // ).action((options) => {})
 
-// const addCommand = new Command()
-//   .name('add')
-//   .description('Add a module to your Tanstack Start project')
+function modulePrompt(): keyof typeof modules {
+  throw new Error('not implemented')
+}
+
+const addCommand = new Command()
+  .name('add')
+  .description('Add a module to your Tanstack Start project')
+  .addArgument(createArgument('MODULE', "The module to add").argOptional().argParser((value) => {
+      if (!Object.keys(modules).includes(value)) {
+        throw new InvalidArgumentError(
+          `Invalid Module: ${value}. Only the following are allowed: ${Object.keys(modules).join(', ')}`,
+        )
+      }
+      return value as keyof typeof modules
+    })
+  )
+  .action(async (id, options) => {
+    // TODO disallow some of the inherited options?
+    const moduleId: keyof typeof modules = id || modulePrompt();
+    const module = modules[moduleId!];
+    invariant(module, `The module ${moduleId} is not valid`)
+    const directory = '.'
+    const targetPath = getAbsolutePath(directory)
+    const cfg = await module.prompt({type: "update"});
+    await module.execute({
+      cfg: { ...cfg, type: 'update' },
+      type: 'update',
+      applyingMessage: `Scaffolding ${moduleId} module`,
+      targetPath,
+    })
+  })
 
 const program = addNewProjectOptions(
   new Command('create-start')
@@ -68,7 +98,7 @@ const program = addNewProjectOptions(
       hidden: true,
     }),
 )
-  // .addCommand(addCommand)
+  .addCommand(addCommand)
   .action(async (options) => {
     logger.info('Starting CLI action', { options })
     initDebug(options.debug)
