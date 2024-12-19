@@ -42,6 +42,8 @@
     }
   },
   "dependencies": {
+    "@typescript-eslint/parser": "^8.18.1",
+    "@typescript-eslint/utils": "^8.16.0",
     "gradient-string": "^3.0.0"
   },
   "devDependencies": {
